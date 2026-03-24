@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Project Documentation
+# docs/ - Removed: Documentation should be in GitHub for completeness
+docs-md/
+
+# README.md - Temporarily hidden until after hackathon 
+# README.md 
+
+# Build output
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# API Configuration files (may contain sensitive examples)
+backend/API_SETUP.md
+api_config.json
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage/
+
+# Database files
+data/*.db
+data/*.db-journal
+
+# OS files
+.DS_Store
+Thumbs.db 
+
+# Key information
+start-browserbase.ps1
+serviceAccountKey.json
+
+# Python
+*.pyc 
+__pycache__/
+
+# Voice cloning environments (removed feature)
+voice_cloning_env/ 
+voice_cloning_env_311/ 
+.venv/

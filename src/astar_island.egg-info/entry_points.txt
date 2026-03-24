@@ -1,0 +1,2 @@
+[console_scripts]
+astar-island = astar_island.cli:main

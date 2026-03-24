@@ -1,0 +1,147 @@
+Metadata-Version: 2.4
+Name: astar-island
+Version: 0.1.0
+Summary: NM i AI 2026 — Astar Island solver (viewport observation + probabilistic terrain prediction)
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.26
+Requires-Dist: pandas>=2.0
+Requires-Dist: pydantic>=2.0
+Requires-Dist: requests>=2.31
+Requires-Dist: scipy>=1.11
+Requires-Dist: scikit-learn>=1.3
+Requires-Dist: lightgbm>=4.0
+Requires-Dist: catboost>=1.2
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn[standard]>=0.27
+Requires-Dist: python-dotenv>=1.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
+
+# NM i AI 2026 — Astar Island (Ejercicio 3)
+
+Workspace para el **ejercicio 3** de la competición: predecir la distribución final de terreno (tensor **H×W×6**) en un simulador vikingo de caja negra, con **50 consultas** compartidas entre **5 seeds** y ventanas **15×15** como máximo.
+
+## Estado del proyecto
+
+| Área | Estado |
+|------|--------|
+| Cliente API (`GET /rounds`, `/budget`, `POST /simulate`, `POST /submit`, `/my-rounds`, `/analysis`) | Implementado |
+| Features del mapa inicial (`features.py`) | Implementado |
+| Plan de queries (anchor + frontier + coastal, hasta 50) | Implementado |
+| Almacén de observaciones + mezcla empírica | Implementado |
+| Estimador de régimen del round (`RoundRegimeEstimator`) | Heurístico v1 |
+| Predictor baseline probabilístico | Implementado |
+| Envío con floor 0.01 | Implementado |
+| CLI + `runner.run_active_round` + log JSON en `data/observations/` | Implementado |
+| FastAPI `/health` + `/solve` (`service.py`) | Opcional |
+| Backfill `/analysis` → `data/rounds/` | Script esqueleto |
+| Meta-modelo LightGBM (`train_meta_model.py`) | Pendiente |
+
+## Requisitos
+
+- Python **3.11+**
+- Cuenta en [app.ainm.no](https://app.ainm.no) y JWT (`access_token` de cookie o Bearer)
+
+## Configuración
+
+1. Copia `.env.example` a `.env` y rellena:
+
+```env
+AINM_TOKEN=tu_jwt_aqui
+AINM_BASE_URL=https://api.ainm.no
+```
+
+2. Instalación editable:
+
+```powershell
+cd "ruta\al\repo"
+pip install -e ".[dev]"
+```
+
+## Uso
+
+### Comprobar ronda activa y presupuesto
+
+```powershell
+astar-island active
+astar-island budget
+```
+
+### Ejecutar ronda completa (50 simulaciones planificadas + predicción + submit)
+
+```powershell
+astar-island run-round
+```
+
+Solo simular y construir predicciones sin enviar:
+
+```powershell
+astar-island run-round --no-submit
+```
+
+**Prueba interna (sin enviar a la competición):** `astar-island run-round --no-submit` — genera predicciones y un log con `prediction_summary` (entropía/confianza por seed), sin `POST /submit`. Útil para revisar el modelo antes de gastar el envío oficial.
+
+Cada `run-round` (salvo `--no-log`) escribe un JSON en **`data/observations/run_YYYYMMDDTHHMMSSZ.json`**: presupuesto antes/después, plan de ventanas, régimen estimado, resumen del store y respuestas de submit si las hubo. La salida de consola incluye **`log_path`**. En Windows: `C:\Test\AI\AI NM i AI 2026 Astar\data\observations\` (o la raíz donde tengas el repo). Mientras corre, verás líneas `[astar-island] simulate N/M…` en la consola (stderr); al final, el JSON resumido con `log_path`.
+
+Forzar un `round_id` concreto (si la API lo acepta):
+
+```powershell
+astar-island run-round --round-id "uuid-del-round"
+```
+
+### Servidor HTTP opcional (FastAPI)
+
+```powershell
+uvicorn astar_island.service:app --host 0.0.0.0 --port 8080
+```
+
+`POST /solve` con JSON `{"token": "<JWT>"}` ejecuta el mismo flujo que `run-round`.
+
+### Tests
+
+```powershell
+pytest -q
+```
+
+### Si `run-round` no imprime nada o no aparece log en `data/observations/`
+
+- Reinstala desde la raíz del repo: `pip install -e '.[dev]'` (así usas el código actual).
+- Deberías ver **al instante** `[astar-island] run-round starting…` y luego mensajes `GET /rounds…`, `query plan ready…`, etc. Si no hay ronda activa o la red falla, verás error o timeout a los **~15 s** en conexión como máximo.
+- Forzar módulo del proyecto: `python -m astar_island.cli run-round --no-submit --max-queries 5`
+- Si se queda colgado tras `building map features…` con `--max-queries` bajo, actualiza el repo: había un bug de planificación ya corregido (bucle al recortar ventanas).
+
+## Límites de la API (importante)
+
+- `POST /simulate`: **máx. 5 peticiones/segundo** por equipo. El cliente aplica una pausa entre simulaciones y reintenta ante **429 Too Many Requests**.
+- `POST /submit`: **máx. 2 peticiones/segundo**. Hay pausa entre envíos por seed.
+
+Si ves **429** en simulaciones, puede ser **rate limit** o **presupuesto de queries agotado** (la API usa 429 para ambos). Mira `astar-island budget`: si `queries_used` ≥ `queries_max`, no podrás simular hasta otra ronda. El runner ahora comprueba esto **antes** del bucle.
+
+## Diseño (resumen)
+
+1. **Sin queries**: a partir del grid inicial y asentamientos se calculan máscaras (costa, frontera, distancias, etc.).
+2. **Queries**: el plan usa ventanas repetidas en zonas con settlements, puertos, costa y frontera — no se intenta cubrir todo el mapa.
+3. **Cada `simulate`** usa un `sim_seed` distinto → las repeticiones en la misma ventana son muestras de la distribución local.
+4. **Régimen**: heurísticas sobre población, comida, riqueza, defensa y `owner_id` para modular priors del baseline.
+5. **Predicción**: prior por celda + mezcla con frecuencias empíricas donde hubo observaciones.
+6. **Scoring**: KL ponderado por entropía; evitar probabilidades nulas → **floor 0.01** antes de enviar.
+
+Documentación de referencia en `docs/` (Overview, API, Scoring, Quickstart, plan de implementación detallado).
+
+## Próximos pasos para subir score
+
+1. Ajustar pesos del `query_planner` y repeticiones por seed según resultados en `/my-rounds`.
+2. Tras cada ronda completada, ejecutar `scripts/backfill_completed_rounds.py` y entrenar `scripts/train_meta_model.py` (LightGBM multi-salida o 6 modelos) con features + régimen + terreno inicial.
+3. Calibrar mezcla prior/empírico (`lambda` en `predictor_baseline`) según número de observaciones por celda.
+
+## Estructura del repo
+
+```
+src/astar_island/   # Paquete principal
+scripts/            # run_round, backfill, train_meta_model
+tests/
+data/               # raw, observations, rounds, models (gitkept)
+docs/               # Documentación de competición y plan
+```

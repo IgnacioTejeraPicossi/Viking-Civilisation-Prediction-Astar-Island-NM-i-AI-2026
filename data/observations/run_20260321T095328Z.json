@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "package_version": "0.1.0",
+    "started_at": "2026-03-21T09:53:17.849411+00:00",
+    "finished_at": "2026-03-21T09:53:28.239759+00:00",
+    "submit": false,
+    "max_queries": 5
+  },
+  "round": {
+    "round_id": "d0a2c894-2162-4d49-86cf-435b9013f3b8",
+    "round_number": 14,
+    "map_width": 40,
+    "map_height": 40,
+    "seeds_count": 5
+  },
+  "budget_before": {
+    "round_id": "d0a2c894-2162-4d49-86cf-435b9013f3b8",
+    "queries_used": 0,
+    "queries_max": 50,
+    "active": true
+  },
+  "budget_after": {
+    "round_id": "d0a2c894-2162-4d49-86cf-435b9013f3b8",
+    "queries_used": 5,
+    "queries_max": 50,
+    "active": true
+  },
+  "query_plan": {
+    "planned_total": 5,
+    "windows": [
+      {
+        "seed_index": 0,
+        "x": 0,
+        "y": 5,
+        "w": 15,
+        "h": 15,
+        "tag": "anchor",
+        "repeats": 1
+      },
+      {
+        "seed_index": 1,
+        "x": 15,
+        "y": 0,
+        "w": 15,
+        "h": 15,
+        "tag": "anchor",
+        "repeats": 1
+      },
+      {
+        "seed_index": 2,
+        "x": 5,
+        "y": 0,
+        "w": 15,
+        "h": 15,
+        "tag": "anchor",
+        "repeats": 1
+      },
+      {
+        "seed_index": 3,
+        "x": 5,
+        "y": 25,
+        "w": 15,
+        "h": 15,
+        "tag": "anchor",
+        "repeats": 1
+      },
+      {
+        "seed_index": 4,
+        "x": 5,
+        "y": 10,
+        "w": 15,
+        "h": 15,
+        "tag": "anchor",
+        "repeats": 1
+      }
+    ]
+  },
+  "simulation": {
+    "queries_run": 5
+  },
+  "regime": {
+    "expansion": 0.6667837016574586,
+    "aggression": 0.7945292817679559,
+    "trade": 0.12886464088397792,
+    "harsh_winter": 0.44320441988950277,
+    "reclamation": 0.5770400552486189
+  },
+  "observation_store": {
+    "settlement_sample_locations": 362,
+    "observed_fraction_per_seed": [
+      0.140625,
+      0.140625,
+      0.140625,
+      0.140625,
+      0.140625
+    ]
+  },
+  "submissions": null
+}
