@@ -1,4 +1,4 @@
-# NM i AI 2026 — Astar Island (Exercise 3)
+# NM i AI 2026 — Astar Island (Exercise 3-testing)
 
 Python workspace for **Astar Island**: predict the final **terrain probability
 distribution** (tensor **H×W×6**) for a black-box Norse simulator.
